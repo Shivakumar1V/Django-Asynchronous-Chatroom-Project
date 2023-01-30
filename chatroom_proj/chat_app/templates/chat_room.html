@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{room_name}} - Chat App</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">
+    <style>
+      div::-webkit-scrollbar{
+            width: 0.7rem;
+        }
+        ::-webkit-scrollbar-thumb:vertical{
+            background-color: #c5c3c3;
+            border-radius: 0.5em;
+        }
+        ::-webkit-scrollbar-track{
+            margin: 0.1em;
+        }
+        .room-head{
+          text-decoration: underline;
+          text-underline-offset: 0.25rem;
+        }
+        .text-container{
+            width: 50rem;
+            height: 25rem;
+            border-radius: 0.6rem;
+            border: 0.1rem solid black;
+            margin: auto;
+            padding: 1rem;
+            overflow: scroll;
+            overflow-x: hidden;
+            overflow-wrap: anywhere;
+            scrollbar-width: thin;
+            background-color: #f8f6f6e3;
+        }
+        .text-container p{
+            background-color: #71f8edc9;
+            width: auto;
+            display: inline-block;
+            border-radius: 1em;
+            padding: 0.5em 0.8em;
+            font-weight: 500;
+        }
+        .input-cont{
+            width: 50rem;
+            margin: auto;
+        }
+        .chat-reply{
+            width: 40rem;
+            height: 2.5rem;
+            border-radius: 0.5rem;
+            padding: 0 1rem;
+        }
+        @media screen and (max-width: 770px) {
+        .text-container{
+          width: auto; 
+          margin: 1rem; 
+        }
+        .input-cont{
+          width: auto;
+        }
+        .chat-reply{
+          width: auto;
+        }
+      }
+    </style>
+  </head>
+  
+  <body>
+
+    <h1 class="text-center my-3 room-head">{{room_name}}</h1>
+    <div class="container text-container" id="chatTextArea">
+      {% if chats %}
+      {% for i in chats %}
+      <p><b>{{i.user}}:</b> {{i.chat_content}}</p><br>
+      {% endfor %}
+      {% endif %}
+    </div>
+
+    <div class="mt-2 input-cont d-flex justify-content-center align-items-center">
+        <input class="chat-reply" id="input" type="text" >
+        <button class="btn btn-success reply-button mx-2" id="submit">Send</button>
+    </div>
+    
+
+    {{ room_name|json_script:"room-name" }} 
+    {{ request.user|slugify|json_script:"user_username"}}
+
+    <script>
+      const roomName = JSON.parse(document.getElementById('room-name').textContent);
+      const user_username = JSON.parse(document.getElementById('user_username').textContent);
+
+      // Using "Enter" as "send" button
+      document.onkeydown = function (e){
+        if (e.keyCode == 13){
+          document.querySelector('#submit').click();
+        }
+      }
+
+      // Sending the data to websocket
+      document.querySelector('#submit').onclick = function (e) {
+        const messageInputDom = document.querySelector('#input');
+        const message = messageInputDom.value; 
+        chatSocket.send(JSON.stringify({   
+            'message': message,
+            'username': user_username,
+        }));
+        messageInputDom.value = '';
+      };
+
+      // websocket connection
+      const chatSocket = new WebSocket(
+          'ws://' +  
+          window.location.host +  
+          '/ws/chat/' + 
+          roomName +    
+          '/'   
+      );
+
+      // Receiving the message from websocket
+      chatSocket.onmessage = function (e) {
+          const data = JSON.parse(e.data);
+          document.querySelector('#chatTextArea').innerHTML += `<p> <b> ${data.username}: </b> ${data.message} </p> <br>`
+          
+          // Scrolling to new message
+          var msgDiv = document.querySelector('#chatTextArea');
+          msgDiv.scrollTop = msgDiv.scrollHeight;
+      }
+
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js" integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN" crossorigin="anonymous"></script>
+  </body>
+</html>
